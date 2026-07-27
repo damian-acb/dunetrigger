@@ -1,0 +1,8 @@
+<lcgdict>
+  <class name="art::Assns<dunedaq::trgdataformats::TriggerPrimitive,simb::MCParticle,float>"/>
+  <class name="art::Assns<simb::MCParticle,dunedaq::trgdataformats::TriggerPrimitive,float>"/>
+  <class name="art::Assns<dunedaq::trgdataformats::TriggerPrimitive,simb::MCParticle,void>"/>
+  <class name="art::Assns<simb::MCParticle,dunedaq::trgdataformats::TriggerPrimitive,void>"/>
+  <class name="art::Wrapper<art::Assns<dunedaq::trgdataformats::TriggerPrimitive,simb::MCParticle,float>>"/>
+  <class name="art::Wrapper<art::Assns<simb::MCParticle,dunedaq::trgdataformats::TriggerPrimitive,float>>"/>
+</lcgdict>

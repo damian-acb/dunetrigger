@@ -1,4 +1,5 @@
 include_directories("${dunedetdataformats_DIR}/../../../include") # there's a neater way?
+include_directories($ENV{NUSIMDATA_INC})
 
 add_subdirectory(fcl)
 add_subdirectory(exe)
@@ -26,8 +27,11 @@ art_make(BASENAME_ONLY MODULE_LIBRARIES
   larsim::MCCheater_BackTrackerService_service
   larsim::MCCheater_ParticleInventoryService_service
   triggeralgs_module
+  lardataalg::DetectorInfo
+  DICTIONARY_LIBRARIES
+    canvas
+    nusimdata::SimulationBase
 )
-
 
 install_fhicl()
 install_headers()

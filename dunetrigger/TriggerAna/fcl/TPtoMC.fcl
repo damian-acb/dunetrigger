@@ -1,0 +1,53 @@
+#include "services_dune.fcl"
+
+process_name: TPLinks
+
+services: {
+  @table::dunefd_1x2x6_simulation_services
+  
+  TFileService: { fileName: "tpmatcher_histograms.root" }
+  TimeTracker:  {}
+  MemoryTracker: { ignoreTotal: 1 } # Prevents memory tracking crashes
+}
+
+services.BackTrackerService:       @local::standard_backtrackerservice
+services.ParticleInventoryService: @local::standard_particleinventoryservice
+
+source: {
+  module_type: RootInput
+  maxEvents:   -1        # Run over all events in the file
+}
+
+physics: {
+  
+  producers: {
+    tplinker: {
+      module_type: "TPtoMCLinks"
+      
+      TPLabel:     "triggerprimitivemaker" 
+      
+      G4Label:     "largeant"
+      
+      OffsetU:     0   
+      OffsetV:     0
+      OffsetZ:     0
+    }
+  }
+
+  run: [ tpmatcher ]
+  
+  stream1:     [ out1 ]
+  
+  trigger_paths: [ run ]
+  end_paths:     [ stream1 ]
+}
+
+outputs: {
+  out1: {
+    module_type: RootOutput
+    fileName:    "tplinks.root"
+    
+    # We want to keep the original file's data and just append our new Assns
+    fastCloning: true 
+  }
+}
