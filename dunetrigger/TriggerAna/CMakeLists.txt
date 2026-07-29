@@ -1,5 +1,7 @@
 include_directories("${dunedetdataformats_DIR}/../../../include") # there's a neater way?
 include_directories($ENV{NUSIMDATA_INC})
+include_directories($ENV{LARDATAOBJ_INC})
+include_directories($ENV{LARCOREOBJ_INC})
 
 add_subdirectory(fcl)
 add_subdirectory(exe)
@@ -7,6 +9,7 @@ add_subdirectory(exe)
 art_make(BASENAME_ONLY MODULE_LIBRARIES
   larcore::Geometry_Geometry_service
   lardataobj::RawData
+  lardataobj::Simulation
   dunecore::DuneObj
   lardata::ArtDataHelper
   nusimdata::SimulationBase
@@ -31,6 +34,8 @@ art_make(BASENAME_ONLY MODULE_LIBRARIES
   DICTIONARY_LIBRARIES
     canvas
     nusimdata::SimulationBase
+    lardataobj::Simulation
+    lardataobj_Simulation_dict
 )
 
 install_fhicl()

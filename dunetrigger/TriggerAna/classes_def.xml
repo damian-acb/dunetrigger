@@ -1,8 +1,12 @@
 <lcgdict>
-  <class name="art::Assns<dunedaq::trgdataformats::TriggerPrimitive,simb::MCParticle,float>"/>
-  <class name="art::Assns<simb::MCParticle,dunedaq::trgdataformats::TriggerPrimitive,float>"/>
+  <class name="sim::TrackIDE"/>
+  <class name="std::vector<sim::TrackIDE>"/>
+  <class name="art::Assns<dunedaq::trgdataformats::TriggerPrimitive,simb::MCParticle,sim::TrackIDE>"/>
   <class name="art::Assns<dunedaq::trgdataformats::TriggerPrimitive,simb::MCParticle,void>"/>
+  <class name="art::Assns<simb::MCParticle,dunedaq::trgdataformats::TriggerPrimitive,sim::TrackIDE>"/>
   <class name="art::Assns<simb::MCParticle,dunedaq::trgdataformats::TriggerPrimitive,void>"/>
-  <class name="art::Wrapper<art::Assns<dunedaq::trgdataformats::TriggerPrimitive,simb::MCParticle,float>>"/>
-  <class name="art::Wrapper<art::Assns<simb::MCParticle,dunedaq::trgdataformats::TriggerPrimitive,float>>"/>
+  <class name="art::Wrapper<art::Assns<dunedaq::trgdataformats::TriggerPrimitive,simb::MCParticle,sim::TrackIDE>>"/>
+  <class name="art::Wrapper<art::Assns<dunedaq::trgdataformats::TriggerPrimitive,simb::MCParticle,void>>"/>
+  <class name="art::Wrapper<art::Assns<simb::MCParticle,dunedaq::trgdataformats::TriggerPrimitive,sim::TrackIDE>>"/>
+  <class name="art::Wrapper<art::Assns<simb::MCParticle,dunedaq::trgdataformats::TriggerPrimitive,void>>"/>
 </lcgdict>

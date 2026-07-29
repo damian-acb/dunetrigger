@@ -73,12 +73,12 @@ namespace dune {
     , fOffsetV(p().OffsetV())
     , fOffsetZ(p().OffsetZ())
   {
-    produces<art::Assns<dunedaq::trgdataformats::TriggerPrimitive, simb::MCParticle, float>>();
+    produces<art::Assns<dunedaq::trgdataformats::TriggerPrimitive, simb::MCParticle, sim::TrackIDE>>();
   }
 
   void TPtoMCLinks::produce(art::Event& event) 
   {
-    auto assnCol = std::make_unique<art::Assns<dunedaq::trgdataformats::TriggerPrimitive, simb::MCParticle, float>>();
+    auto assnCol = std::make_unique<art::Assns<dunedaq::trgdataformats::TriggerPrimitive, simb::MCParticle, sim::TrackIDE>>();
 
     auto tpHandle = event.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(fTPLabel);
     auto mcHandle = event.getValidHandle<std::vector<simb::MCParticle>>(fG4Label);
@@ -123,20 +123,16 @@ namespace dune {
           std::cout<<"Warning: No matched trackIDEs were found for trigger primittive at channel: "<< tpPtr->channel << " ,and time: " << tpPtr->time_peak << std::endl;
           continue;
       }
+      for (const sim::TrackIDE& track_ide: track_ides){
 
-      auto bt_match = std::max_element(
-          track_ides.begin(),
-          track_ides.end(),
-          [](const sim::TrackIDE& a, const sim::TrackIDE& b) {
-            return a.numElectrons < b.numElectrons;
-            }
-      );
-
-      if (trackIdToMCPtr.find(bt_match->trackID) != trackIdToMCPtr.end()) {
-        art::Ptr<simb::MCParticle> mcPtr = trackIdToMCPtr[bt_match->trackID];
+        if (trackIdToMCPtr.find(track_ide.trackID) != trackIdToMCPtr.end()) {
+          art::Ptr<simb::MCParticle> mcPtr = trackIdToMCPtr[track_ide.trackID];
         
-        assnCol->addSingle(tpPtr, mcPtr, bt_match->energyFrac);
+          assnCol->addSingle(tpPtr, mcPtr, track_ide);
+        }
+
       }
+
     }
 
     event.put(std::move(assnCol));
