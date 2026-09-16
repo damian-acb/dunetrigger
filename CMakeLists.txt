@@ -55,7 +55,7 @@ find_package( art_root_io REQUIRED )
 find_package( ROOT REQUIRED )
 find_package( dunedaqdataformats REQUIRED EXPORT )
 find_package( HDF5 REQUIRED)
-find_package( hep_hpc REQUIRED EXPORT )
+find_ups_product( hep_hpc )
 find_ups_product( nlohmann_json ) # this seems to be deprecated but I can't find other working ways
 find_ups_product( TRACE ) # this seems to be deprecated but I can't find other working ways
 
