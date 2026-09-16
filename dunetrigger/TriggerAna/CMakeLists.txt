@@ -25,7 +25,8 @@ art_make(BASENAME_ONLY MODULE_LIBRARIES
   ROOT::Tree
   larsim::MCCheater_BackTrackerService_service
   larsim::MCCheater_ParticleInventoryService_service
-  hep_hpc::hdf5
+  lardataalg_DetectorInfo
+  hep_hpc_hdf5
   triggeralgs_module
 )
 

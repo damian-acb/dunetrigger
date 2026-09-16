@@ -42,6 +42,8 @@ cet_report_compiler_flags()
 
 find_package( nufinder REQUIRED )
 find_package( larcore REQUIRED EXPORT)
+find_package( lardata REQUIRED EXPORT )
+find_package( lardataalg REQUIRED EXPORT )
 find_package( nuevdb REQUIRED EXPORT )
 find_package( nug4 REQUIRED EXPORT )
 find_package( nugen REQUIRED EXPORT )
