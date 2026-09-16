@@ -1,0 +1,15 @@
+# tp_hdf5_dump_1x2x6.fcl
+
+#include "tp_hdf5_dump.fcl"
+#include "tools_dune.fcl"
+
+process_name: TPHDF5Dump1x2x6
+
+services:   {
+    @table::services_tp_hdf5_dump
+    @table::dunefd_1x2x6_reco_services
+}
+
+source:     @local::source_tp_hdf5_dump
+
+physics:    @local::physics_tp_hdf5_dump

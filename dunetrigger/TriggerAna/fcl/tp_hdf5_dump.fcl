@@ -1,0 +1,60 @@
+# tp_hdf5_dump.fcl
+
+#include "triggersim.fcl"
+
+BEGIN_PROLOG
+
+services_tp_hdf5_dump: @local::services_triggersim
+services_tp_hdf5_dump.TFileService.fileName: "tpHDF5Dump.hists.root"
+
+source_tp_hdf5_dump: @local::source_triggersim
+
+outputs_tp_hdf5_dump: @local::outputs_triggersim
+outputs_tp_hdf5_dump.out1.fileName: "tpHDF5Dump.root"
+
+## These are analyzers
+
+triggerPrimitiveHDF5Dump_dumpAll:
+{
+  module_type: TriggerPrimitiveHDF5Dump
+
+  # Trigger primitives to dump, and the G4 particles they are backtracked to
+  tp_tag: "tpmakerTPC"
+  g4_tag: "largeant"
+  # Generator whose MCTruths are dumped to the "MCNeutrino" dataset
+  atmos_tag: "generator"
+
+  # HDF5 file written by this module
+  output_filename: "tpHDF5Dump.h5"
+
+  # Offset to apply for the backtracker, per readout view
+  U_window_offset: 0
+  V_window_offset: 0
+  X_window_offset: 0
+
+  # If true, dump all particles from the G4 simulation to a dataset named "MCParticles"
+  dump_mcparticles: true
+  # If true, dump the neutrino interaction of each MCTruth from atmos_tag to a dataset
+  # named "MCNeutrino"
+  dump_mcneutrinos: true
+  # If true, dump one "SimEnergyDeposit_<instance>" dataset per SimEnergyDeposit product
+  # written by g4_tag
+  dump_sed: false
+
+  verbosity: 0
+}
+
+## Basic example of a physics configuration, better to create your own
+
+# There are no producers here, so this runs on a file produced by a TriggerSim fcl.
+physics_tp_hdf5_dump: {
+
+  analyzers: {
+    tpHDF5Dump: @local::triggerPrimitiveHDF5Dump_dumpAll
+  }
+
+  ana:            [ tpHDF5Dump ]
+  end_paths:      [ ana ]
+}
+
+END_PROLOG
