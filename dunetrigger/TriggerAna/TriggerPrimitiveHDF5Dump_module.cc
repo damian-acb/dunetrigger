@@ -90,7 +90,7 @@ public:
   void beginJob() override;
 
 private:
-  using Ntuple_tp = hep_hpc::hdf5::Ntuple<int, int, uint64_t, int, int, int, double, double, double,
+  using Ntuple_tp = hep_hpc::hdf5::Ntuple<int, int, uint64_t, int, int, int, double,
                                           double, int, int, double>;
   using Ntuple_mc = hep_hpc::hdf5::Ntuple<int, int, std::array<char, GENERATOR_LABEL_SIZE>, double,
                                           int, double, double, double, double>;
@@ -262,7 +262,7 @@ void dunetrigger::TriggerPrimitiveHDF5Dump::write_triggerprimitives(art::Event c
 
   Ntuple_tp::column_info_t const cols_tp{
       "channel", "samples_over_threshold", "time_start", "samples_to_peak", "adc_integral",
-      "adc_peak", "x_start", "x_peak", "x_end", "z", "view", "trackIDE_trackID",
+      "adc_peak", "x", "z", "view", "trackIDE_trackID",
       "trackIDE_fraction"};
   Ntuple_tp ntuple(*h5_file, "Events/" + std::to_string(event) + "/TriggerPrimitives", cols_tp,
                    NTUPLE_BUFFER_SIZE);
@@ -291,16 +291,14 @@ void dunetrigger::TriggerPrimitiveHDF5Dump::write_triggerprimitives(art::Event c
     double const sample_peak = tp.time_peak / TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
 
     double const z = wire_serv.Wire(wid).GetCenter().Z();
-    double const x_start = detProp.ConvertTicksToX(sample_start, wid.Plane, wid.TPC, wid.Cryostat);
-    double const x_peak = detProp.ConvertTicksToX(sample_peak, wid.Plane, wid.TPC, wid.Cryostat);
-    double const x_end = detProp.ConvertTicksToX(sample_end, wid.Plane, wid.TPC, wid.Cryostat);
+    double const x = detProp.ConvertTicksToX(sample_peak, wid.Plane, wid.TPC, wid.Cryostat);
 
     if (track_ides.empty()) {
       if (verbosity_ >= Verbosity::kVerbose)
         std::cout << "No matched TrackIDEs for TP on channel " << tp.channel << " at time "
                   << tp.time_peak << std::endl;
       ntuple.insert(tp.channel, samples_over_threshold, tp.time_start, samples_to_peak,
-                    tp.adc_integral, tp.adc_peak, x_start, x_peak, x_end, z, view,
+                    tp.adc_integral, tp.adc_peak, x, z, view,
                     INVALID_TRACK_ID, INVALID_TRACK_ID);
       continue;
     }
@@ -310,7 +308,7 @@ void dunetrigger::TriggerPrimitiveHDF5Dump::write_triggerprimitives(art::Event c
         std::cout << "G4 MC particle ID: " << track_ide.trackID << std::endl;
 
       ntuple.insert(tp.channel, samples_over_threshold, tp.time_start, samples_to_peak,
-                    tp.adc_integral, tp.adc_peak, x_start, x_peak, x_end, z, view,
+                    tp.adc_integral, tp.adc_peak, x, z, view,
                     track_ide.trackID, track_ide.energyFrac);
     }
   }
