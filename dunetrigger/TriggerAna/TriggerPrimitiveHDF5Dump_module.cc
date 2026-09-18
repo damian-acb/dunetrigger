@@ -9,8 +9,14 @@
  * simb::MCParticle), "MCNeutrino" (one row per neutrino interaction) and, if requested,
  * one "SimEnergyDeposit_<instance>" dataset per sim::SimEnergyDeposit product instance.
  *
- * Trigger primitives are matched to energy depositions with the BackTracker, over the
- * sample window of the TP shifted by a per-view offset.
+ * Trigger primitives are matched to energy depositions over the sample window of the TP
+ * shifted by a per-view offset.
+ *
+ * SimChannels and the MCParticle -> MCTruth association are read directly from the event
+ * rather than through BackTrackerService / ParticleInventoryService. Those services build
+ * their maps from an sPreProcessEvent callback, i.e. before any module has run, so they are
+ * empty whenever the products come from producers in the same job. Reading the products
+ * ourselves works the same whether this runs standalone or in the producer path.
  */
 ////////////////////////////////////////////////////////////////////////
 // Class:       TriggerPrimitiveHDF5Dump
@@ -25,6 +31,7 @@
 #include "art/Framework/Principal/Provenance.h"
 #include "art/Framework/Principal/Selector.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
+#include "canvas/Persistency/Common/FindOneP.h"
 #include "canvas/Persistency/Provenance/ProductID.h"
 #include "canvas/Utilities/InputTag.h"
 #include "fhiclcpp/ParameterSet.h"
@@ -32,13 +39,11 @@
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 
 #include "larcore/Geometry/WireReadout.h"
-#include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
+#include "larcoreobj/SimpleTypesAndConstants/RawTypes.h"
 #include "lardata/DetectorInfoServices/DetectorClocksService.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 #include "lardataobj/Simulation/SimChannel.h"
 #include "lardataobj/Simulation/SimEnergyDeposit.h"
-#include "larsim/MCCheater/BackTrackerService.h"
-#include "larsim/MCCheater/ParticleInventoryService.h"
 
 #include "nusimdata/SimulationBase/MCNeutrino.h"
 #include "nusimdata/SimulationBase/MCParticle.h"
@@ -58,6 +63,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 constexpr int INVALID_TRACK_ID = -9999;
@@ -108,6 +114,7 @@ private:
   art::InputTag tp_tag;
   art::InputTag g4_tag;
   art::InputTag atmos_tag;
+  art::InputTag simchannel_tag;
   std::string output_filename;
 
   std::array<int, 3> bt_view_offsets;
@@ -126,6 +133,7 @@ dunetrigger::TriggerPrimitiveHDF5Dump::TriggerPrimitiveHDF5Dump(fhicl::Parameter
     , tp_tag(p.get<art::InputTag>("tp_tag"))
     , g4_tag(p.get<art::InputTag>("g4_tag"))
     , atmos_tag(p.get<art::InputTag>("atmos_tag", "generator"))
+    , simchannel_tag(p.get<art::InputTag>("simchannel_tag", "tpcrawdecoder:simpleSC"))
     , output_filename(p.get<std::string>("output_filename"))
     , bt_view_offsets{p.get<int>("U_window_offset", 0), p.get<int>("V_window_offset", 0),
                       p.get<int>("X_window_offset", 0)}
@@ -135,7 +143,11 @@ dunetrigger::TriggerPrimitiveHDF5Dump::TriggerPrimitiveHDF5Dump(fhicl::Parameter
     , verbosity_(p.get<int>("verbosity", 0))
 {
   consumes<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(tp_tag);
-  if (dump_mcparticles) consumes<std::vector<simb::MCParticle>>(g4_tag);
+  consumes<std::vector<sim::SimChannel>>(simchannel_tag);
+  if (dump_mcparticles) {
+    consumes<std::vector<simb::MCParticle>>(g4_tag);
+    consumes<art::Assns<simb::MCTruth, simb::MCParticle>>(g4_tag);
+  }
   if (dump_mcneutrinos) consumes<std::vector<simb::MCTruth>>(atmos_tag);
 }
 
@@ -159,9 +171,12 @@ int dunetrigger::TriggerPrimitiveHDF5Dump::view_window_offset(geo::View_t view) 
 
 void dunetrigger::TriggerPrimitiveHDF5Dump::write_mcparticles(art::Event const &e,
                                                               int event) const {
-  art::ServiceHandle<cheat::ParticleInventoryService const> pi_serv;
-
   auto mc_handle = e.getValidHandle<std::vector<simb::MCParticle>>(g4_tag);
+
+  // Read the MCParticle -> MCTruth association straight from the event instead of asking
+  // ParticleInventoryService. The service fills its maps from an sPreProcessEvent callback,
+  // so they are empty when the products come from producers in this same job.
+  art::FindOneP<simb::MCTruth> mc_to_truth(mc_handle, e, g4_tag);
 
   Ntuple_mc::column_info_t const cols_mc{"trackID",  "PDG", "GeneratorLabel", "InitialEnergy",
                                          "motherID", "Vx",  "Vz",             "EndX",
@@ -179,9 +194,9 @@ void dunetrigger::TriggerPrimitiveHDF5Dump::write_mcparticles(art::Event const &
   std::array<char, GENERATOR_LABEL_SIZE> gen_label;
 
   for (size_t i = 0; i < mc_handle->size(); ++i) {
-    art::Ptr<simb::MCParticle> mc_ptr(mc_handle, i);
+    simb::MCParticle const &mc = (*mc_handle)[i];
 
-    art::Ptr<simb::MCTruth> mctruth_ptr = pi_serv->TrackIdToMCTruth_P(mc_ptr->TrackId());
+    art::Ptr<simb::MCTruth> const &mctruth_ptr = mc_to_truth.at(i);
     std::string generator_label = UNKNOWN_GENERATOR;
 
     if (mctruth_ptr.isNonnull() && id_to_label.count(mctruth_ptr.id())) {
@@ -191,8 +206,8 @@ void dunetrigger::TriggerPrimitiveHDF5Dump::write_mcparticles(art::Event const &
     gen_label.fill('\0');
     std::strncpy(gen_label.data(), generator_label.c_str(), GENERATOR_LABEL_SIZE - 1);
 
-    ntuple.insert(mc_ptr->TrackId(), mc_ptr->PdgCode(), gen_label, mc_ptr->E(), mc_ptr->Mother(),
-                  mc_ptr->Vx(), mc_ptr->Vz(), mc_ptr->EndX(), mc_ptr->EndZ());
+    ntuple.insert(mc.TrackId(), mc.PdgCode(), gen_label, mc.E(), mc.Mother(), mc.Vx(), mc.Vz(),
+                  mc.EndX(), mc.EndZ());
   }
 
   if (verbosity_ >= Verbosity::kDebug)
@@ -230,7 +245,7 @@ void dunetrigger::TriggerPrimitiveHDF5Dump::write_simenergydeposits(art::Event c
   // its own dataset.
   for (auto const &sed_handle :
        e.getMany<std::vector<sim::SimEnergyDeposit>>(art::ModuleLabelSelector(g4_tag.label()))) {
-    if (!sed_handle.isValid() || sed_handle->empty()) continue;
+    if (sed_handle->empty()) continue;
 
     std::string instance_label = sed_handle.provenance()->productInstanceName();
     if (instance_label.empty()) instance_label = DEFAULT_SED_INSTANCE;
@@ -256,9 +271,17 @@ void dunetrigger::TriggerPrimitiveHDF5Dump::write_triggerprimitives(art::Event c
   auto const detProp =
       art::ServiceHandle<detinfo::DetectorPropertiesService const>()->DataFor(e, clockData);
   auto const &wire_serv = art::ServiceHandle<geo::WireReadout>()->Get();
-  art::ServiceHandle<cheat::BackTrackerService const> bt_serv;
 
   auto tp_handle = e.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(tp_tag);
+
+  // Index the SimChannels by channel ourselves rather than going through BackTrackerService,
+  // whose map is built before any module runs and so is empty when the SimChannels are made
+  // by a producer in this same job. sim::SimChannel::TrackIDEs does the rest of the work the
+  // BackTracker would have done.
+  auto sc_handle = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
+  std::unordered_map<raw::ChannelID_t, sim::SimChannel const *> simchannels;
+  simchannels.reserve(sc_handle->size());
+  for (auto const &sc : *sc_handle) simchannels[sc.Channel()] = &sc;
 
   Ntuple_tp::column_info_t const cols_tp{
       "channel", "samples_over_threshold", "time_start", "samples_to_peak", "adc_integral",
@@ -284,8 +307,10 @@ void dunetrigger::TriggerPrimitiveHDF5Dump::write_triggerprimitives(art::Event c
     sample_start = std::max(0, sample_start);
     sample_end = std::max(0, sample_end);
 
-    art::Ptr<sim::SimChannel> sim_channel = bt_serv->FindSimChannel(tp.channel);
-    std::vector<sim::TrackIDE> track_ides = sim_channel->TrackIDEs(sample_start, sample_end);
+    auto const sc_it = simchannels.find(tp.channel);
+    std::vector<sim::TrackIDE> track_ides;
+    if (sc_it != simchannels.end())
+      track_ides = sc_it->second->TrackIDEs(sample_start, sample_end);
 
     geo::WireID const &wid = wire_serv.ChannelToWire(tp.channel).front();
     double const sample_peak = tp.time_peak / TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;

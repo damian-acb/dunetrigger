@@ -23,6 +23,8 @@ triggerPrimitiveHDF5Dump_dumpAll:
   g4_tag: "largeant"
   # Generator whose MCTruths are dumped to the "MCNeutrino" dataset
   atmos_tag: "generator"
+  # SimChannels the trigger primitives are backtracked against
+  simchannel_tag: "tpcrawdecoder:simpleSC"
 
   # HDF5 file written by this module
   output_filename: "tpHDF5Dump.h5"
